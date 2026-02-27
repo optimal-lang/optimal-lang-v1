@@ -5,6 +5,7 @@ function tokenize(str) {
   while ((token = re.exec(str)[1]) !== "") {
     if (token[0] === ";") continue;
     if (token[0] === "#") continue;
+    //if (token.match(/^-?[0-9][0-9.]*$/)) token = parseFloat(token, 10);
     if (isFinite(token)) token = parseFloat(token, 10);
     result.push(token);
   }
@@ -83,6 +84,7 @@ function read_sexp(code, exp) {
     return ["@", token];
   default: {
     if (token[0] === ":") return token;
+    //if (token[0] === "&" && token !== "&") return token;
     if (token[0] === "&") return token;
     let ids = token[0] === "." ? [token] : token.split(".");
     return ["#", ...ids];
@@ -111,7 +113,7 @@ function join_sexp(exp) {
   return result;
 }
 
-function oml2ast(text) {
+export function oml2ast(text) {
   let code = tokenize(text);
   let result = [];
   while (true) {
@@ -124,9 +126,8 @@ function oml2ast(text) {
   }
   return result;
 }
-exports.oml2ast = oml2ast;
 
-function ast2oml(ast) {
+export function ast2oml(ast) {
   if (ast === null) return "null";
   if (ast === undefined) return "undefined";
   if ((typeof ast) === "number") return JSON.stringify(ast);
@@ -170,17 +171,37 @@ function ast2oml(ast) {
     return result;
   }
 }
-exports.ast2oml = ast2oml;
 
-function astequal(a, b) {
+export function astequal(a, b) {
   // primitive
   if (a === b) {
     return true;
   }
+  /*
+    if(a === null){
+    return b === null; // null === null => true
+    }
+  */
+  /*
+    if (a instanceof Array && b instanceof Array) {
+    // Array
+    if (a.length !== b.length) {
+    return false
+    }
+    for (let i = 0; i < a.length; ++i) {
+    const ret = astequal(a[i], b[i]);
+    if (ret === false) {
+    return false
+    }
+    }
+    return true;
+    } else
+  */
   if (a instanceof Function || b instanceof Function) {
     // Function
-    //console.log("function not supported!")
-    return false;
+    //console.log("function was not supported!!")
+    return false
+    //} else if (typeof (a) === 'object' && typeof (b) === 'object' && !(a instanceof Array) && !(b instanceof Array)) {
   } else if (typeof (a) === 'object' && typeof (b) === 'object') {
     // Object
     const ak = Object.keys(a);
@@ -197,6 +218,5 @@ function astequal(a, b) {
     }
     return true;
   }
-  return false;
+  return false
 }
-exports.astequal = astequal;

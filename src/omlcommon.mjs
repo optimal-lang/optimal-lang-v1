@@ -1,4 +1,4 @@
-class OMLCommon {
+export class OMLCommon {
   is_array(x) {
     return (x instanceof Array);
   }
@@ -109,4 +109,3 @@ class OMLCommon {
   }
 
 }
-exports.OMLCommon = OMLCommon;
