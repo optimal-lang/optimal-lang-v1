@@ -1,5 +1,7 @@
 import { run } from "./src/omljs.mjs";
 run(`
+(define my_var 777)
+(setq my_var (+ my_var 1))
 (console.log @11+22@)
 (console.log "str")
 (console.log "ハロー©")
@@ -41,4 +43,6 @@ run(`
 (console.log (&& (< 2 4) (> 3 4]
   (try (throw 123)
   (catch ex (console.log ex]
-`); // glob.runAll()
+`);
+
+print(my_var);

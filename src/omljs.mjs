@@ -40,17 +40,7 @@ function compile_ast(ast) {
     return "null";
   if (ast === undefined)
     return "undefined";
-  /*
-    if (!ast) {
-    return JSON.stringify(ast);
-    }
-  */
   if (typeof ast === "string") {
-    /*
-      if (ast.match(/^:.+$/) || ast.match(/^#.+$/))
-      return JSON.stringify(ast);
-      return ast;
-    */
     return JSON.stringify(ast);
   }
   if (!(ast instanceof Array)) {
@@ -93,9 +83,7 @@ function compile_ast(ast) {
         cond_ast.push([[common.id("equal"), common.id("__case__"), e[0]],...e.slice(1)]);
       }
     }
-    //return compile_ast([common.id("let*"), [[common.id("__case__"), ast[1]]], cond_ast]);
     let new_ast = [common.id("let*"), [[common.id("__case__"), ast[1]]], cond_ast];
-    //print(new_ast);
     return compile_ast(new_ast);
   }
   case "_cond": {
@@ -302,7 +290,7 @@ function compile_ast(ast) {
     ast = [common.id("let*"), [[common.id("__dict__"), ["@", "{}"]]], ...body];
     return compile_ast(ast);
   }
-  case "set!":
+  case "set!": case "setq":
     return compile_ast(ast[1]) + "=" + compile_ast(ast[2]);
   case "throw": {
     return "(function(){throw " + compile_ast(ast[1]) + "})()";
