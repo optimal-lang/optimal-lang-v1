@@ -1,5 +1,6 @@
 import { run } from "./omljs.mjs";
 run(`
+(console.log @11+22@)
 (console.log "str")
 (console.log "ハロー©")
 (define xyz 777)
