@@ -1,4 +1,4 @@
-import { run } from "./omljs.mjs";
+import { run } from "./src/omljs.mjs";
 run(`
 (console.log @11+22@)
 (console.log "str")
