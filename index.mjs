@@ -14,7 +14,7 @@ run(`
   (set! x (+ 2 x))
   (console.log x]
 
-(Deno.exit 0)
+#(Deno.exit 0)
 [dotimes (i 3) (console.log i]
 [dotimes (i 3) (dotimes (j 2) (console.log (list i j]
 (define x 11)

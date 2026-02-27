@@ -1,5 +1,317 @@
-import { oml2ast, ast2oml, astequal } from "./oml2ast.js";
-import { OMLCommon } from "./omlcommon.js";
+function tokenize(str) {
+  let re = /[\s,]*([()\[\]{}'`]|"(?:\\.|[^\\"])*"|@(?:@@|[^@])*@|;.*|#.*|[^\s,()\[\]{}'"`;@]*)/g;
+  let result = [];
+  let token;
+  while ((token = re.exec(str)[1]) !== "") {
+    if (token[0] === ";") continue;
+    if (token[0] === "#") continue;
+    if (isFinite(token)) token = parseFloat(token, 10);
+    result.push(token);
+  }
+  return result;
+}
+
+function read_token(code, exp) {
+  if (code.length === 0) return undefined;
+  let token = code.shift();
+  exp.push(token);
+  return token;
+}
+
+function read_list(code, exp, ch) {
+  let result = [];
+  let ast;
+  while ((ast = read_sexp(code, exp, false)) !== undefined) {
+    if (ast === "]") {
+      if (ch !== "[") code.unshift("]");
+      break;
+    } else if (ast === ")") {
+      break;
+    }
+    result.push(ast);
+  }
+  return result;
+}
+
+function read_dict(code, exp) {
+  let result = [["#", "dict"]];
+  let ast1;
+  let ast2;
+  while ((ast1 = read_sexp(code, exp)) !== undefined) {
+    if (ast1 === "]") continue;
+    if (ast1 === "}") break;
+    ast2 = read_sexp(code, exp);
+    result.push(ast1);
+    result.push(ast2);
+  }
+  return result;
+}
+
+function read_sexp(code, exp) {
+  let token = read_token(code, exp);
+  if (token === undefined) return undefined;
+  if ((typeof token) === "number") return token;
+  switch (token) {
+  case "false":
+    return false;
+  case "true":
+    return true;
+  case "null":
+    return null;
+  case "undefined":
+    return ["@", "undefined"];
+  }
+  let ch = token[0];
+  switch (ch) {
+  case "(":
+  case "[":
+    let lst = read_list(code, exp, ch);
+    return lst;
+  case ")":
+  case "]":
+    return ch;
+  case "{":
+    return read_dict(code, exp);
+  case "}":
+    return ch;
+  case '"':
+    token = JSON.parse(token);
+    return token;
+  case "@":
+    token = token.replace(/(^@|@$)/g, "");
+    token = token.replace(/(@@)/g, "@");
+    return ["@", token];
+  default: {
+    if (token[0] === ":") return token;
+    if (token[0] === "&") return token;
+    let ids = token[0] === "." ? [token] : token.split(".");
+    return ["#", ...ids];
+  }
+  }
+}
+
+function join_sexp(exp) {
+  if (exp.length === 0) return "";
+  let last = exp.shift();
+  let result = "" + last;
+  while (exp.length > 0) {
+    let token = exp.shift();
+    if (
+      token !== ")" &&
+        token !== "]" &&
+        (last !== "(") & (last !== "[") &&
+        last !== "'"
+    )
+      result += " ";
+    if (token === "[") token = "(";
+    if (token === "]") token = ")";
+    result += token;
+    last = token;
+  }
+  return result;
+}
+
+export function oml2ast(text) {
+  let code = tokenize(text);
+  let result = [];
+  while (true) {
+    let exp = [];
+    let ast = read_sexp(code, exp);
+    if (ast === undefined) break;
+    if (ast === ")") continue;
+    if (ast === "]") continue;
+    result.push([join_sexp(exp), ast]);
+  }
+  return result;
+}
+
+export function ast2oml(ast) {
+  if (ast === null) return "null";
+  if (ast === undefined) return "undefined";
+  if ((typeof ast) === "number") return JSON.stringify(ast);
+  if ((typeof ast) === "string") return JSON.stringify(ast);
+  if ((typeof ast) === "boolean") return JSON.stringify(ast);
+  if (ast instanceof Array) {
+    let result = "( ";
+    for (let i = 0; i < ast.length; i++) {
+      if (i > 0) result += " ";
+      result += ast2oml(ast[i]);
+    }
+    let keys = Object.keys(ast);
+    let re = /^[0-9]+/;
+    keys = keys.filter(key => !re.test(key));
+    keys.sort();
+    if (keys.length > 0) {
+      if (ast.length > 0) result += " ";
+      result += "?";
+      for (let i=0; i<keys.length; i++) {
+        let key = keys[i];
+        result += " (";
+        result += JSON.stringify(key);
+        result += " ";
+        result += ast2oml(ast[key]);
+        result += ")";
+      }
+    }
+    result += " )";
+    return result;
+  } else {
+    let result = "{ ";
+    let keys = Object.keys(ast);
+    keys.sort();
+    for (let i = 0; i < keys.length; i++) {
+      if (i > 0) result += " ";
+      result += JSON.stringify(keys[i]);
+      result += " ";
+      result += ast2oml(ast[keys[i]]);
+    }
+    result += " }";
+    return result;
+  }
+}
+
+export function astequal(a, b) {
+  // primitive
+  if (a === b) {
+    return true;
+  }
+  if (a instanceof Function || b instanceof Function) {
+    // Function
+    //console.log("function not supported!")
+    return false;
+  } else if (typeof (a) === 'object' && typeof (b) === 'object') {
+    // Object
+    const ak = Object.keys(a);
+    const bk = Object.keys(b);
+    if (ak.length !== bk.length) {
+      return false;
+    }
+    for (let i = 0; i < ak.length; ++i) {
+      const key = ak[i];
+      const ret = astequal(a[key], b[key]);
+      if (ret === false) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+export class OMLCommon {
+  is_array(x) {
+    return (x instanceof Array);
+  }
+
+  is_bool(x) {
+    return (typeof x) === "boolean";
+  }
+
+  is_number(x) {
+    return (typeof x) === "number";
+  }
+
+  is_string(x) {
+    return (typeof x) === "string";
+  }
+
+  is_quoted(x) {
+    if (!this.is_array(x)) return false;
+    if (x.length === 0) return false;
+    return x[0] === "`";
+  }
+
+  is_id(ast, name = undefined) {
+    let ok = ast instanceof Array && ast[0] === "#";
+    if (!ok) return false;
+    return name ? ast[1]===name : true;
+  }
+
+  is_variable(ast) {
+    if (!(ast instanceof Array)) false;
+    if (ast.length === 0) return false;
+    return ast[0] === "#";
+  }
+
+  is_script(ast) {
+    if (!(ast instanceof Array)) false;
+    if (ast.length === 0) return false;
+    return ast[0] === "@";
+  }
+
+  is_callable(ast) {
+    if (!(ast instanceof Array)) false;
+    if (ast.length === 0) return false;
+    if (ast[0] === "#") return false;
+    if (ast[0] === "@") return false;
+    return this.is_id(ast[0]) || this.is_script(ast[0]);
+  }
+
+  is_fn(ast) {
+    if (!(ast instanceof Array)) false;
+    if (ast.length === 0) return false;
+    return this.is_id(ast[0]) && this.to_id(ast[0])==="fn";
+  }
+
+  to_id(ast) {
+    if (this.is_id(ast)) {
+      let ids = ast.slice(1);
+      return ids.join(".");
+    } else if (this.is_script(ast)) {
+      return "@";
+    }
+    return ast;
+  }
+
+  id(x) {
+    return ["#", x];
+  }
+
+  to_def(ast) {
+    if (!this.is_array(ast)) return null;
+    if (ast.length === 0) return null;
+    switch (this.to_id(ast[0])) {
+    case "def": {
+      if (ast.length < 2) throw new Error("sysntax error");
+      let ast1 = ast[1];
+      let ast2 = ast.length === 2 ? null : ast[2];
+      return [this.id("def"), ast1, ast2];
+    }
+    case "defvar": {
+      if (ast.length < 2) throw new Error("sysntax error");
+      let ast1 = ast[1];
+      let ast2 = ast.length === 2 ? null : ast[2];
+      return [this.id("def"), ast1, ast2];
+    }
+    case "defun": {
+      let new_ast = ast.slice(3);
+      new_ast.unshift(ast[2]);
+      new_ast.unshift(this.id("fn"));
+      return [this.id("def"), ast[1], new_ast];
+    }
+    case "define": {
+      let ast1 = this.to_id(ast[1]);
+      if (ast1 instanceof Array) {
+        if (ast.length < 2) throw new Error("sysntax error");
+        let new_ast = ast.slice(2);
+        return this.to_def([this.id("defun"), ast[1][0], ast[1].slice(1), ...new_ast]);
+      }
+      else {
+        if (ast.length < 2) throw new Error("sysntax error");
+        let ast1 = ast[1];
+        let ast2 = ast.length === 2 ? null : ast[2];
+        return this.to_def([this.id("defvar"), ast1, ast2]);
+      }
+    }
+    default:
+      return null;
+    }
+  }
+
+}
+
+import { oml2ast, ast2oml, astequal } from "./oml2ast.mjs";
+import { OMLCommon } from "./omlcommon.mjs";
 
 let common = new OMLCommon();
 

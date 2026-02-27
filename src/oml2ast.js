@@ -111,7 +111,7 @@ function join_sexp(exp) {
   return result;
 }
 
-export function oml2ast(text) {
+function oml2ast(text) {
   let code = tokenize(text);
   let result = [];
   while (true) {
@@ -124,8 +124,9 @@ export function oml2ast(text) {
   }
   return result;
 }
+exports.oml2ast = oml2ast;
 
-export function ast2oml(ast) {
+function ast2oml(ast) {
   if (ast === null) return "null";
   if (ast === undefined) return "undefined";
   if ((typeof ast) === "number") return JSON.stringify(ast);
@@ -169,8 +170,9 @@ export function ast2oml(ast) {
     return result;
   }
 }
+exports.ast2oml = ast2oml;
 
-export function astequal(a, b) {
+function astequal(a, b) {
   // primitive
   if (a === b) {
     return true;
@@ -197,3 +199,4 @@ export function astequal(a, b) {
   }
   return false;
 }
+exports.astequal = astequal;
