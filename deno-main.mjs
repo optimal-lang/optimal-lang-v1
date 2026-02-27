@@ -1,10 +1,8 @@
 #! /usr/bin/env deno-run
-//import { run } from "./src/omljs.mjs";
+//import * as dummy from "./dist/bundle.js";
 
-import * as dummy from "./dist/bundle.js";
-
-//const text = await Deno.readTextFile("./public/all.js");
-//eval(text);
+const text = await Deno.readTextFile("./dist/bundle.js");
+eval(text);
 
 run(`
 (console.log @11+22@)
